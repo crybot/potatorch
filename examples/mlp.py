@@ -41,6 +41,7 @@ training_loop = TrainingLoop(
         shuffle=True,
         device=device,
         verbose=1,
+        num_workers=0,
         seed=SEED,
         val_metrics={'l1': nn.L1Loss(), 'mse': nn.MSELoss()},
         callbacks=[

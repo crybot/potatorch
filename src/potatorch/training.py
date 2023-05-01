@@ -87,7 +87,7 @@ class TrainingLoop():
                 collate_fn=self._collate_fn,
                 pin_memory=True,
                 num_workers=self.num_workers,
-                prefetch_factor=self.num_workers*2,
+                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else 2),
                 # TODO: how to pass worker_init_fn
                 # worker_init_fn=dataset.worker_init_fn,
                 persistent_workers=False)
@@ -97,8 +97,8 @@ class TrainingLoop():
                 shuffle=False,
                 pin_memory=True,
                 num_workers=self.num_workers,
-                prefetch_factor=self.num_workers*2,
-                persistent_workers=True)
+                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else 2),
+                persistent_workers=self.num_workers > 0)
         test_dl = DataLoader(test_ds,
                 batch_size=self.batch_size,
                 collate_fn=self._collate_fn,

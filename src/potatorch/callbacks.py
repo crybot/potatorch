@@ -69,6 +69,9 @@ class ProgressbarCallback(TrainingCallback):
 
     def on_train_epoch_start(self, state):
         super().on_train_epoch_start(state)
+        # reset incremental averages
+        self.loss = 0.0
+        self.lr = 0.0
 
         # pkbar expects epochs starting from zero
         epoch = state.get_state('epoch', 1) - 1
@@ -80,8 +83,7 @@ class ProgressbarCallback(TrainingCallback):
                     num_epochs=self.epochs,
                     epoch=epoch,
                     width=self.width,
-                    always_stateful=False,
-                    stateful_metrics=['lr'])
+                    always_stateful=True)
         # By default, all metrics are averaged over time. If you don't want this behavior, you could either:
         # 1. Set always_stateful to True, or
         # 2. Set stateful_metrics=["loss", "rmse", "val_loss", "val_rmse"], Metrics in this list will be displayed as-is.
@@ -92,10 +94,10 @@ class ProgressbarCallback(TrainingCallback):
         super().on_train_batch_end(state)
         # TODO: use self.metrics and self.state to update the progress bar
         batch = state.get_state('batch')
-        lr = state.get_state('lr')
-        loss = state.get_last_metric('loss')
-        if batch is not None and loss and lr:
-            self.kbar.update(batch, values=[('loss', loss), ('lr', lr)])
+        self.lr = self.lr + (state.get_state('lr') - self.lr) / (batch + 1)
+        self.loss = self.loss + (state.get_last_metric('loss') - self.loss) / (batch + 1)
+        if batch is not None and self.loss and self.lr:
+            self.kbar.update(batch, values=[('loss', self.loss), ('lr', self.lr)])
 
     def on_validation_end(self, state):
         super().on_validation_end(state)

@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LinearLR, ReduceLROnPlateau
 from potatorch.datasets.utils import split_dataset
 from potatorch.datasets.utils import RandomSubsetSampler
+from potatorch.datasets.utils import UnbatchedDataloader
 from contextlib import ExitStack
 import numpy as np
 import gc
@@ -79,8 +80,10 @@ class TrainingLoop():
         sampler = None
         if self.random_subsampling is not None:
             sampler = RandomSubsetSampler(train_ds, self.random_subsampling, replace=False)
+        
+        dataloader_fn = DataLoader if self.batch_size else UnbatchedDataloader
 
-        train_dl = DataLoader(train_ds,
+        train_dl = dataloader_fn(train_ds,
                 batch_size=self.batch_size,
                 shuffle=shuffle,
                 sampler=sampler,
@@ -91,7 +94,7 @@ class TrainingLoop():
                 # TODO: how to pass worker_init_fn
                 # worker_init_fn=dataset.worker_init_fn,
                 persistent_workers=False)
-        val_dl = DataLoader(val_ds,
+        val_dl = dataloader_fn(val_ds,
                 batch_size=self.batch_size,
                 collate_fn=self._collate_fn,
                 shuffle=False,
@@ -99,12 +102,13 @@ class TrainingLoop():
                 num_workers=self.num_workers,
                 prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else None),
                 persistent_workers=self.num_workers > 0)
-        test_dl = DataLoader(test_ds,
+        test_dl = dataloader_fn(test_ds,
                 batch_size=self.batch_size,
                 collate_fn=self._collate_fn,
                 shuffle=False,
                 pin_memory=True,
                 num_workers=0)
+
         return train_dl, val_dl, test_dl
 
     def _train(self, epochs):
@@ -141,8 +145,8 @@ class TrainingLoop():
                 with ExitStack() as stack:
                     if self.mixed_precision:
                         stack.enter_context(torch.cuda.amp.autocast())
-                    pred = self.model(X).squeeze()
-                    loss = self.loss_fn(pred, y)
+                pred = self.model(X).squeeze()
+                loss = self.loss_fn(pred, y)
 
                 # Backpropagation
                 if self.mixed_precision:

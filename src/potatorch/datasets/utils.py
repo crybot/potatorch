@@ -60,3 +60,20 @@ class RandomSubsetSampler(Sampler[int]):
 
     def __len__(self) -> int:
         return int(len(self.data_source) * self.fraction)
+
+class UnbatchedDataloader():
+    def __init__(self, dataset, *args, **kwargs):
+        self.dataset = dataset
+
+    def __iter__(self):
+        self.consumed = False
+        return self
+
+    def __next__(self):
+        if self.consumed:
+            raise StopIteration
+        self.consumed = True
+        return self.dataset[:]
+
+    def __len__(self):
+        return min(1, len(self.dataset))

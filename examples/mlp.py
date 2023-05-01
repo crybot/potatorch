@@ -37,6 +37,7 @@ training_loop = TrainingLoop(
         train_p=0.8,
         val_p=0.1,
         test_p=0.1,
+        random_split=False,
         batch_size=None,
         shuffle=False,
         device=device,

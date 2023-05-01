@@ -18,6 +18,7 @@ class TrainingLoop():
                  train_p=0.7,
                  val_p=0.15,
                  test_p=0.15,
+                 random_split=True,
                  batch_size=1024,
                  shuffle=False,
                  random_subsampling=None,
@@ -36,6 +37,7 @@ class TrainingLoop():
         self.train_p = train_p
         self.val_p = val_p
         self.test_p = test_p
+        self.random_split = random_split
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.random_subsampling = random_subsampling
@@ -74,7 +76,7 @@ class TrainingLoop():
         shuffle = self.shuffle and self.random_subsampling is not None
 
         train_ds, val_ds, test_ds = split_dataset(dataset,
-                train_p, val_p, test_p,
+                train_p, val_p, test_p, random=self.random_split,
                 seed=self.seed)
 
         sampler = None

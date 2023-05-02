@@ -40,7 +40,6 @@ training_loop = TrainingLoop(
         batch_size=None,
         shuffle=False,
         device=device,
-        verbose=1,
         num_workers=0,
         seed=SEED,
         val_metrics={'l1': nn.L1Loss(), 'mse': nn.MSELoss()},

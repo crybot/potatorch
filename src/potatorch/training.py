@@ -26,7 +26,6 @@ class TrainingLoop():
                  mixed_precision=False,
                  callbacks=[],
                  val_metrics={},
-                 verbose=1,
                  device='cpu',
                  seed=42):
         self.dataset = dataset
@@ -43,7 +42,6 @@ class TrainingLoop():
         self.num_workers = num_workers
         self.device = device
         self.mixed_precision = mixed_precision
-        self.verbose = verbose
         self.callbacks = callbacks
         self.val_metrics = val_metrics
         self.device = device
@@ -202,8 +200,9 @@ class TrainingLoop():
 
         return h
     
-    def run(self, model, epochs=10):
+    def run(self, model, epochs=10, verbose=1):
         self.model = model.to(self.device)
+        self.update_state('verbose', verbose)
         try:
             self._train(epochs)
         except KeyboardInterrupt:

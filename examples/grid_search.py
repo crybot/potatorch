@@ -12,7 +12,8 @@ def train(dataset, device, config):
     # Fix a seed for TrainingLoop to make non-deterministic operations such as
     # shuffling reproducible
     SEED = 42
-    epochs = 100
+    # NOTE: `epochs` is a fixed hyperparameter; it won't change among runs
+    epochs = config['epochs']
 
     # Define your model as a pytorch Module
     model = nn.Sequential(nn.Linear(1, 128), nn.ReLU(), 
@@ -21,7 +22,7 @@ def train(dataset, device, config):
 
     loss_fn = torch.nn.MSELoss()
     # Provide a loss function and an optimizer
-    # NOTE: use config['lr'] as a dynamic hyperparameter for each training run
+    # NOTE: `lr` is a dynamic hyperparameter; it will change among runs
     optimizer = make_optimizer(torch.optim.Adam, lr=config['lr'])
 
     # Construct a TrainingLoop object.
@@ -48,22 +49,26 @@ def train(dataset, device, config):
             )
     # Run the training loop
     model = training_loop.run(model, epochs=epochs, verbose=1)
+    # Return a dictionary containing the training and validation metrics 
+    # calculated during the last epoch of the loop
     return training_loop.get_last_metrics()
 
-# TODO: Implement fixed parameters
 # Define your search configuration
 search_config = {
-        'method': 'grid', # which search method to use: ['grid', 'bayes', 'random']
+        'method': 'grid',   # which search method to use: ['grid', 'bayes', 'random']
         'metric': {
             'name': 'val_loss', # the metric you're optimizing
             'goal': 'minimize'  # whether you want to minimize or maximize it
-            },
-        'parameters': {  # the set of hyperparameters you want to optimize
+        },
+        'parameters': { # the set of hyperparameters you want to optimize
             'lr': {
-                'values': [1e-2, 1e-3, 1e-4] # a range of values for the grid search to try
-                }
+                'values': [1e-2, 1e-3, 1e-4]    # a range of values for the grid search to try
             }
+        },
+        'fixed': {      # fixed hyperparameters that won't change among runs
+            'epochs': 200
         }
+    }
 
 def main():
     device = 'cuda'

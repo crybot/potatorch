@@ -3,12 +3,12 @@ from potatorch.optimization import BayesianOptimizer
 
 class HyperOptimizer():
   def __init__(self, sweep_config):
-    self.config = {}
-    self.best_config = {}
     self.sweep_config = sweep_config
     self.minimize = sweep_config['metric']['goal'] == 'minimize'
     self.metric = sweep_config['metric']['name']
     self.method = sweep_config['method']
+    self.config = sweep_config.get('fixed', {})
+    self.best_config = self.config.copy()
     self.best_metric = np.inf if self.minimize else -np.inf
 
   def _assign_state(self, state):

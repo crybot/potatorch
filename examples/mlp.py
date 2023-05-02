@@ -30,7 +30,6 @@ optimizer = torch.optim.Adam(model.parameters(), lr = lr)
 # shuffling, mixed precision training, etc.
 # You can provide callback handles through the `callbacks` argument.
 training_loop = TrainingLoop(
-        model,
         dataset,
         loss_fn,
         optimizer,
@@ -50,4 +49,4 @@ training_loop = TrainingLoop(
             ]
         )
 # Run the training loop
-model = training_loop.run(epochs=epochs)
+model = training_loop.run(model, epochs=epochs)

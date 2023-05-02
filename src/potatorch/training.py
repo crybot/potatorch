@@ -11,7 +11,6 @@ import gc
 
 class TrainingLoop():
     def __init__(self,
-                 model,
                  dataset,
                  loss_fn,
                  optimizer,
@@ -24,13 +23,12 @@ class TrainingLoop():
                  random_subsampling=None,
                  filter_fn=None,
                  num_workers=4,
-                 device='cpu',
                  mixed_precision=False,
                  callbacks=[],
                  val_metrics={},
                  verbose=1,
+                 device='cpu',
                  seed=42):
-        self.model = model
         self.dataset = dataset
         self.loss_fn = loss_fn
         self.optimizer = optimizer
@@ -48,9 +46,9 @@ class TrainingLoop():
         self.verbose = verbose
         self.callbacks = callbacks
         self.val_metrics = val_metrics
+        self.device = device
         self.seed = 42
 
-        self.model.to(device)
         self._clear_state()
         self._init_dataloaders()
 
@@ -204,7 +202,8 @@ class TrainingLoop():
 
         return h
     
-    def run(self, epochs=10):
+    def run(self, model, epochs=10):
+        self.model = model.to(self.device)
         try:
             self._train(epochs)
         except KeyboardInterrupt:
@@ -223,6 +222,7 @@ class TrainingLoop():
             to restore the current state of the TrainingLoop sometime in the
             future.
         """
+        assert self.model is not None, "Model not initialized"
         return {
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
@@ -234,8 +234,9 @@ class TrainingLoop():
                 # 'test_dataloader': self.test_dataloader
                 }
 
-    def load_state(self, dump):
+    def load_state(self, model, dump):
         """ Loads a TrainingLoop snapshot produced by a call to dump_state. """
+        self.model = model
         self.model.load_state_dict(dump['model_state_dict'])
         self.optimizer.load_state_dict(dump['optimizer_state_dict'])
         self.state = dump['training_loop_state_dict']

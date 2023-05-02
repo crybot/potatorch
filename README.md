@@ -58,17 +58,18 @@ optimizer = torch.optim.Adam(model.parameters(), lr = lr)
 # shuffling, mixed precision training, etc.
 # You can provide callback handles through the `callbacks` argument.
 training_loop = TrainingLoop(
-        model,
         dataset,
         loss_fn,
         optimizer,
         train_p=0.8,
         val_p=0.1,
         test_p=0.1,
-        batch_size=256,
-        shuffle=True,
+        random_split=False,
+        batch_size=None,
+        shuffle=False,
         device=device,
         verbose=1,
+        num_workers=0,
         seed=SEED,
         val_metrics={'l1': nn.L1Loss(), 'mse': nn.MSELoss()},
         callbacks=[
@@ -76,5 +77,5 @@ training_loop = TrainingLoop(
             ]
         )
 # Run the training loop
-model = training_loop.run(epochs=epochs)
+model = training_loop.run(model, epochs=epochs)
 ```

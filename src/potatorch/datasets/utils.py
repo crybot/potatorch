@@ -7,7 +7,7 @@ import random
 from torch import default_generator, randperm
 from torch._utils import _accumulate
 
-def memory_safe_random_split(dataset, lengths, generator = default_generator):
+def memory_safe_random_split(dataset, lengths, generator=default_generator, random=True):
     """ same as torch.utils.data.random_split, but passes a `ndarray` to Subset
     in order to avoid memory leaks caused by python refcounting behaviour of
     native lists
@@ -16,10 +16,14 @@ def memory_safe_random_split(dataset, lengths, generator = default_generator):
     if sum(lengths) != len(dataset):    # type: ignore[arg-type]
         raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
 
-    indices = np.array(randperm(sum(lengths), generator=generator).tolist())
+    if random:
+        indices = np.array(randperm(sum(lengths), generator=generator).tolist())
+    else:
+        indices = np.arange(sum(lengths))
+        
     return [Subset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
 
-def split_dataset(ds, train_p=0.7, val_p=0.15, test_p=0.15, seed=42):
+def split_dataset(ds, train_p=0.7, val_p=0.15, test_p=0.15, random=True, seed=42):
     """ Split a torch.utils.data.Datset into 3 random split, according to the
         given percentages.
 
@@ -38,7 +42,8 @@ def split_dataset(ds, train_p=0.7, val_p=0.15, test_p=0.15, seed=42):
 
     train_ds, val_ds, test_ds = memory_safe_random_split(ds,
             [train_size, val_size, test_size],
-            generator=torch.Generator().manual_seed(seed)
+            generator=torch.Generator().manual_seed(seed),
+            random=random
             )
 
     # for clarity
@@ -60,3 +65,20 @@ class RandomSubsetSampler(Sampler[int]):
 
     def __len__(self) -> int:
         return int(len(self.data_source) * self.fraction)
+
+class UnbatchedDataloader():
+    def __init__(self, dataset, *args, **kwargs):
+        self.dataset = dataset
+
+    def __iter__(self):
+        self.consumed = False
+        return self
+
+    def __next__(self):
+        if self.consumed:
+            raise StopIteration
+        self.consumed = True
+        return self.dataset[:]
+
+    def __len__(self):
+        return min(1, len(self.dataset))

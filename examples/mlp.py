@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from potatorch.training import TrainingLoop
+from potatorch.training import TrainingLoop, make_optimizer
 from potatorch.callbacks import ProgressbarCallback
 from torch.utils.data import TensorDataset
 
@@ -23,24 +23,23 @@ dataset = TensorDataset(torch.arange(1000).view(1000, 1), torch.sin(torch.arange
 
 # Provide a loss function and an optimizer
 loss_fn = torch.nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr = lr)
+optimizer = make_optimizer(torch.optim.Adam, lr=lr)
 
 # Construct a TrainingLoop object.
 # TrainingLoop handles the initialization of dataloaders, dataset splitting,
 # shuffling, mixed precision training, etc.
 # You can provide callback handles through the `callbacks` argument.
 training_loop = TrainingLoop(
-        model,
         dataset,
         loss_fn,
         optimizer,
         train_p=0.8,
         val_p=0.1,
         test_p=0.1,
-        batch_size=256,
-        shuffle=True,
+        random_split=False,
+        batch_size=None,
+        shuffle=False,
         device=device,
-        verbose=1,
         num_workers=0,
         seed=SEED,
         val_metrics={'l1': nn.L1Loss(), 'mse': nn.MSELoss()},
@@ -49,4 +48,4 @@ training_loop = TrainingLoop(
             ]
         )
 # Run the training loop
-model = training_loop.run(epochs=epochs)
+model = training_loop.run(model, epochs=epochs)

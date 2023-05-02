@@ -4,37 +4,40 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import LinearLR, ReduceLROnPlateau
 from potatorch.datasets.utils import split_dataset
 from potatorch.datasets.utils import RandomSubsetSampler
+from potatorch.datasets.utils import UnbatchedDataloader
 from contextlib import ExitStack
 import numpy as np
 import gc
 
+def make_optimizer(optimizer_init: callable, *args, **kwargs):
+    return lambda m: optimizer_init(m.parameters(), *args, **kwargs)
+
 class TrainingLoop():
     def __init__(self,
-                 model,
                  dataset,
                  loss_fn,
-                 optimizer,
+                 optimizer_fn,
                  train_p=0.7,
                  val_p=0.15,
                  test_p=0.15,
+                 random_split=True,
                  batch_size=1024,
                  shuffle=False,
                  random_subsampling=None,
                  filter_fn=None,
                  num_workers=4,
-                 device='cpu',
                  mixed_precision=False,
                  callbacks=[],
                  val_metrics={},
-                 verbose=1,
+                 device='cpu',
                  seed=42):
-        self.model = model
         self.dataset = dataset
         self.loss_fn = loss_fn
-        self.optimizer = optimizer
+        self.optimizer_fn = optimizer_fn
         self.train_p = train_p
         self.val_p = val_p
         self.test_p = test_p
+        self.random_split = random_split
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.random_subsampling = random_subsampling
@@ -42,12 +45,11 @@ class TrainingLoop():
         self.num_workers = num_workers
         self.device = device
         self.mixed_precision = mixed_precision
-        self.verbose = verbose
         self.callbacks = callbacks
         self.val_metrics = val_metrics
+        self.device = device
         self.seed = 42
 
-        self.model.to(device)
         self._clear_state()
         self._init_dataloaders()
 
@@ -73,38 +75,41 @@ class TrainingLoop():
         shuffle = self.shuffle and self.random_subsampling is not None
 
         train_ds, val_ds, test_ds = split_dataset(dataset,
-                train_p, val_p, test_p,
+                train_p, val_p, test_p, random=self.random_split,
                 seed=self.seed)
 
         sampler = None
         if self.random_subsampling is not None:
             sampler = RandomSubsetSampler(train_ds, self.random_subsampling, replace=False)
+        
+        dataloader_fn = DataLoader if self.batch_size else UnbatchedDataloader
 
-        train_dl = DataLoader(train_ds,
+        train_dl = dataloader_fn(train_ds,
                 batch_size=self.batch_size,
                 shuffle=shuffle,
                 sampler=sampler,
                 collate_fn=self._collate_fn,
                 pin_memory=True,
                 num_workers=self.num_workers,
-                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else 2),
+                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else None),
                 # TODO: how to pass worker_init_fn
                 # worker_init_fn=dataset.worker_init_fn,
                 persistent_workers=False)
-        val_dl = DataLoader(val_ds,
+        val_dl = dataloader_fn(val_ds,
                 batch_size=self.batch_size,
                 collate_fn=self._collate_fn,
                 shuffle=False,
                 pin_memory=True,
                 num_workers=self.num_workers,
-                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else 2),
+                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else None),
                 persistent_workers=self.num_workers > 0)
-        test_dl = DataLoader(test_ds,
+        test_dl = dataloader_fn(test_ds,
                 batch_size=self.batch_size,
                 collate_fn=self._collate_fn,
                 shuffle=False,
                 pin_memory=True,
                 num_workers=0)
+
         return train_dl, val_dl, test_dl
 
     def _train(self, epochs):
@@ -141,8 +146,8 @@ class TrainingLoop():
                 with ExitStack() as stack:
                     if self.mixed_precision:
                         stack.enter_context(torch.cuda.amp.autocast())
-                    pred = self.model(X).squeeze()
-                    loss = self.loss_fn(pred, y)
+                pred = self.model(X).squeeze()
+                loss = self.loss_fn(pred, y)
 
                 # Backpropagation
                 if self.mixed_precision:
@@ -198,7 +203,10 @@ class TrainingLoop():
 
         return h
     
-    def run(self, epochs=10):
+    def run(self, model, epochs=10, verbose=1):
+        self.model = model.to(self.device)
+        self.optimizer = self.optimizer_fn(self.model)
+        self.update_state('verbose', verbose)
         try:
             self._train(epochs)
         except KeyboardInterrupt:
@@ -217,6 +225,7 @@ class TrainingLoop():
             to restore the current state of the TrainingLoop sometime in the
             future.
         """
+        assert self.model is not None, "Model not initialized"
         return {
                 'model_state_dict': self.model.state_dict(),
                 'optimizer_state_dict': self.optimizer.state_dict(),
@@ -228,8 +237,9 @@ class TrainingLoop():
                 # 'test_dataloader': self.test_dataloader
                 }
 
-    def load_state(self, dump):
+    def load_state(self, model, dump):
         """ Loads a TrainingLoop snapshot produced by a call to dump_state. """
+        self.model = model
         self.model.load_state_dict(dump['model_state_dict'])
         self.optimizer.load_state_dict(dump['optimizer_state_dict'])
         self.state = dump['training_loop_state_dict']
@@ -249,6 +259,8 @@ class TrainingLoop():
         """ Update the given metric with the current value
             The method automatically tracks min and max values of the metric
         """
+        if torch.is_tensor(value):
+            value = value.item()
         min_v = self.get_last_metric(f'min-{metric}')
         max_v = self.get_last_metric(f'max-{metric}')
         self.metrics[metric] = value

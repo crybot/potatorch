@@ -17,6 +17,7 @@ PotaTorch is not currently on PyPI, so you'll have to install it from sources:
 git clone https://github.com/crybot/potatorch
 pip install -e potatorch
 ````
+______________________________________________________________________
 
 ### Minimal Working Example
 You can run the following example directly from `examples/mlp.py` if you already have pytorch installed, or you can run it with docker through the provided scripts:
@@ -29,7 +30,7 @@ The example trains a feed forward network on a toy problem:
 import torch
 from torch import nn
 
-from potatorch.training import TrainingLoop
+from potatorch.training import TrainingLoop, make_optimizer
 from potatorch.callbacks import ProgressbarCallback
 from torch.utils.data import TensorDataset
 
@@ -51,7 +52,7 @@ dataset = TensorDataset(torch.arange(1000).view(1000, 1), torch.sin(torch.arange
 
 # Provide a loss function and an optimizer
 loss_fn = torch.nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr = lr)
+optimizer = make_optimizer(torch.optim.Adam, lr=lr)
 
 # Construct a TrainingLoop object.
 # TrainingLoop handles the initialization of dataloaders, dataset splitting,
@@ -68,7 +69,6 @@ training_loop = TrainingLoop(
         batch_size=None,
         shuffle=False,
         device=device,
-        verbose=1,
         num_workers=0,
         seed=SEED,
         val_metrics={'l1': nn.L1Loss(), 'mse': nn.MSELoss()},
@@ -78,4 +78,85 @@ training_loop = TrainingLoop(
         )
 # Run the training loop
 model = training_loop.run(model, epochs=epochs)
+```
+______________________________________________________________________
+
+### Automatic Hyperparameters Optimization
+PotaTorch provides a basic set of utilities to perform hyperparameters optimization. You can choose among **grid search**, **random search** and **bayesian search**. All of them are provided by `potatorch.optimization.tuning.HyperOptimizer`. The following is a working example of a simple grid search on a toy problem. You can find the full script under `exampled/grid_search.py`
+
+```python
+def train(dataset, device, config):
+    """ Your usual training function that runs a TrainingLoop instance """
+    # Fix a seed for TrainingLoop to make non-deterministic operations such as
+    # shuffling reproducible
+    SEED = 42
+    # NOTE: `epochs` is a fixed hyperparameter; it won't change among runs
+    epochs = config['epochs']
+
+    # Define your model as a pytorch Module
+    model = nn.Sequential(nn.Linear(1, 128), nn.ReLU(), 
+            nn.Linear(128, 128), nn.ReLU(),
+            nn.Linear(128, 1))
+
+    loss_fn = torch.nn.MSELoss()
+    # Provide a loss function and an optimizer
+    # NOTE: `lr` is a dynamic hyperparameter; it will change among runs
+    optimizer = make_optimizer(torch.optim.Adam, lr=config['lr'])
+
+    # Construct a TrainingLoop object.
+    # TrainingLoop handles the initialization of dataloaders, dataset splitting,
+    # shuffling, mixed precision training, etc.
+    # You can provide callback handles through the `callbacks` argument.
+    training_loop = TrainingLoop(
+            dataset,
+            loss_fn,
+            optimizer,
+            train_p=0.8,
+            val_p=0.1,
+            test_p=0.1,
+            random_split=False,
+            batch_size=None,
+            shuffle=False,
+            device=device,
+            num_workers=0,
+            seed=SEED,
+            val_metrics={'l1': nn.L1Loss(), 'mse': nn.MSELoss()},
+            callbacks=[
+                ProgressbarCallback(epochs=epochs, width=20),
+                ]
+            )
+    # Run the training loop
+    model = training_loop.run(model, epochs=epochs, verbose=1)
+    # Return a dictionary containing the training and validation metrics 
+    # calculated during the last epoch of the loop
+    return training_loop.get_last_metrics()
+
+# Define your search configuration
+search_config = {
+        'method': 'grid',   # which search method to use: ['grid', 'bayes', 'random']
+        'metric': {
+            'name': 'val_loss', # the metric you're optimizing
+            'goal': 'minimize'  # whether you want to minimize or maximize it
+        },
+        'parameters': { # the set of hyperparameters you want to optimize
+            'lr': {
+                'values': [1e-2, 1e-3, 1e-4]    # a range of values for the grid search to try
+            }
+        },
+        'fixed': {      # fixed hyperparameters that won't change among runs
+            'epochs': 200
+        }
+    }
+
+def main():
+    device = 'cuda'
+    # Create your dataset as a torch.data.Dataset
+    dataset = TensorDataset(torch.arange(1000).view(1000, 1), torch.sin(torch.arange(1000)))
+    # Apply additional parameters to the train function to have f(config) -> {}
+    score_function = partial(train, dataset, device)
+    # Construct the hyperparameters optimizer
+    hyperoptimizer = HyperOptimizer(search_config)
+    # Run the optimization over the hyperparameters space
+    config, error = hyperoptimizer.optimize(score_function, return_error=True)
+    print('Best configuration found: {}\n with error: {}'.format(config, error))
 ```

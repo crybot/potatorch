@@ -259,6 +259,8 @@ class TrainingLoop():
         """ Update the given metric with the current value
             The method automatically tracks min and max values of the metric
         """
+        if torch.is_tensor(value):
+            value = value.item()
         min_v = self.get_last_metric(f'min-{metric}')
         max_v = self.get_last_metric(f'max-{metric}')
         self.metrics[metric] = value

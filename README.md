@@ -7,8 +7,14 @@
 
 **PotaTorch is a lightweight PyTorch framework specifically designed to run on hardware with limited resources.**
 
-**WIP:**
 ______________________________________________________________________
+
+<!-- [![PyPI Status](https://pepy.tech/badge/potatorch)](https://pepy.tech/project/potatorch) -->
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/potatorch)](https://pypi.org/project/potatorch/)
+[![PyPI version](https://badge.fury.io/py/potatorch.svg)](https://badge.fury.io/py/potatorch)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/w/crybot/potatorch)
+[![license](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/crybot/potatorch/blob/main/LICENSE)
+
 </div>
 
 ### Install PotaTorch

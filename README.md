@@ -3,18 +3,23 @@
 
 # PotaTorch
 
-<img src="/potatorch.png" width="200" height="200">
-
-**WIP:**
+<img src="https://raw.githubusercontent.com/crybot/potatorch/main/potatorch.png" width="200" height="200" role="img">
 
 **PotaTorch is a lightweight PyTorch framework specifically designed to run on hardware with limited resources.**
+
+**WIP:**
 ______________________________________________________________________
 </div>
 
 ### Install PotaTorch
-PotaTorch is not currently on PyPI, so you'll have to install it from sources:
+PotaTorch is published on PyPI, you can install it through pip:
 ```bash
-git clone https://github.com/crybot/potatorch
+pip install potatorch
+```
+
+or you can install it from sources:
+```bash
+git clone --single-branch -b main https://github.com/crybot/potatorch
 pip install -e potatorch
 ````
 ______________________________________________________________________
@@ -82,15 +87,13 @@ model = training_loop.run(model, epochs=epochs)
 ______________________________________________________________________
 
 ### Automatic Hyperparameters Optimization
-PotaTorch provides a basic set of utilities to perform hyperparameters optimization. You can choose among **grid search**, **random search** and **bayesian search**. All of them are provided by `potatorch.optimization.tuning.HyperOptimizer`. The following is a working example of a simple grid search on a toy problem. You can find the full script under `exampled/grid_search.py`
+PotaTorch provides a basic set of utilities to perform hyperparameters optimization. You can choose among **grid search**, **random search** and **bayesian search**. All of them are provided by `potatorch.optimization.tuning.HyperOptimizer`. The following is a working example of a simple grid search on a toy problem. You can find the full script under `examples/grid_search.py`
 
 ```python
 def train(dataset, device, config):
     """ Your usual training function that runs a TrainingLoop instance """
-    # Fix a seed for TrainingLoop to make non-deterministic operations such as
-    # shuffling reproducible
     SEED = 42
-    # NOTE: `epochs` is a fixed hyperparameter; it won't change among runs
+    # `epochs` is a fixed hyperparameter; it won't change among runs
     epochs = config['epochs']
 
     # Define your model as a pytorch Module
@@ -99,14 +102,9 @@ def train(dataset, device, config):
             nn.Linear(128, 1))
 
     loss_fn = torch.nn.MSELoss()
-    # Provide a loss function and an optimizer
-    # NOTE: `lr` is a dynamic hyperparameter; it will change among runs
+    # `lr` is a dynamic hyperparameter; it will change among runs
     optimizer = make_optimizer(torch.optim.Adam, lr=config['lr'])
 
-    # Construct a TrainingLoop object.
-    # TrainingLoop handles the initialization of dataloaders, dataset splitting,
-    # shuffling, mixed precision training, etc.
-    # You can provide callback handles through the `callbacks` argument.
     training_loop = TrainingLoop(
             dataset,
             loss_fn,
@@ -125,7 +123,6 @@ def train(dataset, device, config):
                 ProgressbarCallback(epochs=epochs, width=20),
                 ]
             )
-    # Run the training loop
     model = training_loop.run(model, epochs=epochs, verbose=1)
     # Return a dictionary containing the training and validation metrics 
     # calculated during the last epoch of the loop
@@ -150,7 +147,6 @@ search_config = {
 
 def main():
     device = 'cuda'
-    # Create your dataset as a torch.data.Dataset
     dataset = TensorDataset(torch.arange(1000).view(1000, 1), torch.sin(torch.arange(1000)))
     # Apply additional parameters to the train function to have f(config) -> {}
     score_function = partial(train, dataset, device)

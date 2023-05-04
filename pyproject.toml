@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "potatorch"
+version = "0.0.1"
+authors = [
+  { name="Marco Pampaloni", email="marco.pampaloni1@gmail.com" },
+]
+description = "Lightweight high-level PyTorch framework that runs on potato machines"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+keywords = ["pytorch", "limited resources", "python", "deep learning", "machine learning", "framework"]
+
+[project.urls]
+"Homepage" = "https://github.com/crybot/potatorch"
+"Bug Tracker" = "https://github.com/crybot/potatorch/issues"

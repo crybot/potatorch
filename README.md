@@ -3,11 +3,11 @@
 
 # PotaTorch
 
-<img src="/potatorch.png" width="200" height="200">
-
-**WIP:**
+<img src="https://raw.githubusercontent.com/crybot/potatorch/main/potatorch.png" width="200" height="200" role="img">
 
 **PotaTorch is a lightweight PyTorch framework specifically designed to run on hardware with limited resources.**
+
+**WIP:**
 ______________________________________________________________________
 </div>
 

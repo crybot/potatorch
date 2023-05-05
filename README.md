@@ -1,9 +1,7 @@
 
 <div align="center">
 
-# PotaTorch
-
-<img src="https://raw.githubusercontent.com/crybot/potatorch/main/potatorch.png" width="200" height="200" role="img">
+<img src="https://raw.githubusercontent.com/crybot/potatorch/banner/docs/potatorch-banner.png" width="100%" role="img">
 
 **PotaTorch is a lightweight PyTorch framework specifically designed to run on hardware with limited resources.**
 
@@ -17,7 +15,7 @@ ______________________________________________________________________
 
 </div>
 
-### Install PotaTorch
+### Installation
 PotaTorch is published on PyPI, you can install it through pip:
 ```bash
 pip install potatorch

@@ -1,7 +1,7 @@
 
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/crybot/potatorch/banner/docs/potatorch-banner.png" width="100%" role="img">
+<img src="https://raw.githubusercontent.com/crybot/potatorch/main/docs/potatorch-banner.png" width="100%" role="img">
 
 **PotaTorch is a lightweight PyTorch framework specifically designed to run on hardware with limited resources.**
 

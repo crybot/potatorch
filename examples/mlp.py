@@ -19,7 +19,7 @@ model = nn.Sequential(nn.Linear(1, 128), nn.ReLU(),
         nn.Linear(128, 1))
 
 # Create your dataset as a torch.data.Dataset
-dataset = TensorDataset(torch.arange(1000).view(1000, 1), torch.sin(torch.arange(1000)))
+dataset = TensorDataset(torch.arange(1000).view(1000, 1), torch.sin(torch.arange(1000).view(1000, 1)))
 
 # Provide a loss function and an optimizer
 loss_fn = torch.nn.MSELoss()

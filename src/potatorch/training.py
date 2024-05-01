@@ -12,6 +12,7 @@ import gc
 def make_optimizer(optimizer_init: callable, *args, **kwargs):
     return lambda m: optimizer_init(m.parameters(), *args, **kwargs)
 
+# TODO: args filter for evaluation metrics
 class TrainingLoop():
     def __init__(self,
                  dataset,
@@ -27,10 +28,12 @@ class TrainingLoop():
                  filter_fn=None,
                  num_workers=4,
                  mixed_precision=False,
+                 loss_arg_filter=None,
                  callbacks=[],
                  val_metrics={},
                  device='cpu',
                  seed=42):
+        
         self.dataset = dataset
         self.loss_fn = loss_fn
         self.optimizer_fn = optimizer_fn
@@ -45,10 +48,14 @@ class TrainingLoop():
         self.num_workers = num_workers
         self.device = device
         self.mixed_precision = mixed_precision
+        self.loss_arg_filter = loss_arg_filter
         self.callbacks = callbacks
         self.val_metrics = val_metrics
         self.device = device
         self.seed = 42
+        
+        if not self.loss_arg_filter:
+            self.loss_arg_filter = lambda x, pred, y: (pred, *y)
 
         self._clear_state()
         self._init_dataloaders()
@@ -132,12 +139,14 @@ class TrainingLoop():
 
             self.model.train()
             # TODO: provide interface to more than one input
-            for batch, (X, y) in enumerate(self.train_dataloader):
+            for batch, (X, *ys) in enumerate(self.train_dataloader):
                 self.on_train_batch_start(batch)
                 # TODO: generalize variable type
                 # TODO: memory_format (e.g. torch.channels_last for 4D tensors)
                 X = X.float().to(self.device, non_blocking=True)
-                y = y.float().to(self.device, non_blocking=True)
+                
+                if ys and not isinstance(ys, torch.Tensor) > 0:
+                    ys = [y.float().to(self.device, non_blocking=True) for y in ys]
 
                 # Clear gradients
                 self.optimizer.zero_grad(set_to_none=True)
@@ -146,8 +155,9 @@ class TrainingLoop():
                 with ExitStack() as stack:
                     if self.mixed_precision:
                         stack.enter_context(torch.cuda.amp.autocast())
-                pred = self.model(X).squeeze()
-                loss = self.loss_fn(pred, y)
+                pred = self.model(X)
+                # loss = self.loss_fn(pred, target)
+                loss = self.loss_fn(*self.loss_arg_filter(X, pred, ys))
 
                 # Backpropagation
                 if self.mixed_precision:
@@ -173,15 +183,18 @@ class TrainingLoop():
         test_metrics = dict.fromkeys(metrics.keys(), 0.0)
         # test_metrics = [0.0 for _ in metrics.keys()]
         with torch.no_grad():
-            for X, y in dataloader:
+            for (X, *ys) in dataloader:
                 # TODO: generalize variable type
                 X = X.float().to(self.device, non_blocking=True)
-                y = y.float().to(self.device, non_blocking=True)
+                
+                if ys and not isinstance(ys, torch.Tensor) > 0:
+                    ys = [y.float().to(self.device, non_blocking=True) for y in ys]
 
-                pred = self.model(X).squeeze().detach()
-                test_loss += self.loss_fn(pred, y).detach()
+                # pred = self.model(X).squeeze().detach()
+                pred = self.model(X)
+                test_loss += self.loss_fn(*self.loss_arg_filter(X, pred, ys)).detach()
                 for name, fn in metrics.items():
-                    test_metrics[name] += fn(pred, y).detach()
+                    test_metrics[name] += fn(pred, *ys).detach()
 
         test_loss /= num_batches
         test_metrics = {k: v / num_batches for k, v in test_metrics.items()}

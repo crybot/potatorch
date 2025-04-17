@@ -116,18 +116,20 @@ class ProgressbarCallback(TrainingCallback):
                 ])
 
 class LRSchedulerCallback(TrainingCallback):
-    def __init__(self, optimizer, warmup_steps=1000, cosine_annealing=True, restart=False, cosine_tmax=None, cosine_factor=None, min_lr=0.0):
+    def __init__(self, optimizer, warmup_steps=1000, cosine_annealing=True, restart=False, cosine_tmax=None, cosine_factor=None, min_lr=0.0, config={}):
         super().__init__()
         self.optimizer = optimizer
-        self.warmup_steps = warmup_steps
+        # self.warmup_steps = warmup_steps
+        self.warmup_steps=config.get('warmup_steps', warmup_steps)
         self.lr_warmup = LinearLR(self.optimizer, start_factor=0.001, total_iters=self.warmup_steps)
         self.lr_decay = ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=5)
         self.lr_cosine = None
-        self.cosine_annealing = cosine_annealing
-        self.cosine_tmax = cosine_tmax
-        self.cosine_factor = cosine_factor
-        self.restart = restart
-        self.min_lr = min_lr
+
+        self.cosine_annealing = config.get('cosine_annealing', cosine_annealing)
+        self.cosine_tmax = config.get('cosine_tmax', cosine_tmax)
+        self.cosine_factor = config.get('cosine_factor', cosine_factor)
+        self.restart = config.get('cosine_restart', restart)
+        self.min_lr = config.get('min_lr', min_lr)
 
         if self.cosine_tmax is None and self.cosine_annealing:
             self.cosine_tmax = 50
@@ -197,8 +199,18 @@ class LRSchedulerCallback(TrainingCallback):
         state.update_state('lr', self.optimizer.param_groups[0]['lr'])
 
 
+
 class WandbCallback(TrainingCallback):
-    def __init__(self, project_name, entity, config=None, tags=None, save_code=True, log=True, batch_frequency=None):
+    def __init__(
+            self,
+            project_name,
+            entity,
+            config=None,
+            tags=None,
+            save_code=True,
+            log=True,
+            batch_frequency=None
+            ):
         super().__init__()
         self.project_name = project_name
         self.entity = entity
@@ -218,7 +230,7 @@ class WandbCallback(TrainingCallback):
         self.run_id = state_dict.get('run_id', None)
 
     def init(self):
-        return wandb.init(
+        run = wandb.init(
                 id=self.run_id,
                 project=self.project_name,
                 entity=self.entity,
@@ -227,6 +239,9 @@ class WandbCallback(TrainingCallback):
                 tags=self.tags,
                 save_code=self.save_code,
                 reinit=True)
+        if self.save_code:
+            run.log_code(".")
+        return run
 
 
     def on_train_start(self, state):
@@ -256,6 +271,11 @@ class WandbCallback(TrainingCallback):
 
     def on_validation_end(self, state):
         super().on_validation_end(state)
+        if self.log:
+            wandb.log({**state.get_states(), **state.get_last_metrics()}, commit=True)
+
+    def on_evaluation_end(self, state):
+        super().on_evaluation_end(state)
         if self.log:
             wandb.log({**state.get_states(), **state.get_last_metrics()}, commit=True)
 

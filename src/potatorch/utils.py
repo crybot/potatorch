@@ -2,6 +2,9 @@ import wandb
 import torch
 import os
 
+def to_device(*tensors, device, **kwargs):
+    return tuple(tensor.to(device, **kwargs) for tensor in tensors)
+
 def download_wandb_checkpoint(run_path, filename, device='cuda'):
     api = wandb.Api()
 

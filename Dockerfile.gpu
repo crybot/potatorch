@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:23.03-py3 
+FROM nvcr.io/nvidia/pytorch:24.08-py3
 RUN apt-get update -y && apt-get install git -y
 RUN pip install pandas numpy pkbar einops pathos
 RUN pip install wandb

@@ -1,12 +1,5 @@
 { pkgs ? import <nixpkgs> {} }:
 let
-  # Define your custom package from PyPI
-
-  # potatorch = pkgs.python312Packages.buildPythonPackage rec {
-  #   pname = "potatorch";
-  #   version = 
-  # }
-
   pkbar = pkgs.python312Packages.buildPythonPackage rec {
     pname = "pkbar";
     version = "0.5";
@@ -38,5 +31,5 @@ in
         python -m venv .venv
       fi
       echo "Activate python environment, then run: pip install -e ."
-    ''; 
+      ''; 
   }

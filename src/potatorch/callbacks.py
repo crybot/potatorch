@@ -361,24 +361,16 @@ class CheckpointCallback(TrainingCallback):
         if self.sync_wandb:
             wandb.save(self.path, base_path=os.path.dirname(self.path))
 
-
 class SanityCheckCallback(TrainingCallback):
     def __init__(self, data, descriptors=None, transform=None, target_transform=None):
         self.data = data
         self.descriptors = descriptors
         self.transform = transform
         self.target_transform = target_transform
-
-        if self.transform:
-            self.data = [self._rebatch(self.transform(x[0], aux[0])) for (x, aux) in self.data]
-
         self.data = self._make_tensors(self.data)
 
-    def _rebatch(self, data):
-        return (np.expand_dims(data[0], 0), np.expand_dims(data[1], 0))
-
     def _make_tensors(self, data):
-        return [(torch.from_numpy(x), torch.from_numpy(aux)) for (x, aux) in data]
+        return [tuple(torch.tensor(x) for x in t) for t in data]
 
     def state_dict(self):
         return {}
@@ -391,7 +383,7 @@ class SanityCheckCallback(TrainingCallback):
         if self.descriptors is not None:
             samples = zip(self.descriptors, self.data, h)
         else:
-            samples = enumerate(zip(self.data, h))
+            samples = zip(range(len(self.data)), self.data, h)
         for (i, x, y) in samples:
             if self.target_transform:
                 y = self.target_transform(y)

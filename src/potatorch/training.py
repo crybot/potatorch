@@ -133,17 +133,16 @@ class TrainingLoop():
     def preprocess_batch(self, inputs, *args, **kwargs):
         return to_device(*inputs, device=self.device, non_blocking=True)
 
-    # TODO: forward should only return prediction and
-    #       backward should only compute loss
-    def forward(self, inputs, *args, **kwargs) -> tuple[Tensor, Tensor]:
+    def forward(self, inputs, *args, **kwargs) -> Tensor:
         (X, *ys) = inputs
         X = X.float()
-        if ys and not isinstance(ys, torch.Tensor) > 0:
-            ys = [y.float() for y in ys]
-
         pred = self.model(X)
-        loss = self.loss_fn(*self.loss_arg_filter(X, pred, ys))
-        return pred, loss
+        return pred
+
+    def compute_loss(self, inputs, pred, *args, **kwargs) -> Tensor:
+        (X, *ys) = inputs
+        X = X.float()
+        return self.loss_fn(*self.loss_arg_filter(X, pred, ys))
 
     def backward(self, loss):
         self.scaler.scale(loss).backward()
@@ -173,7 +172,8 @@ class TrainingLoop():
                 # Forward pass
                 with torch.autocast(device_type=self.device, enabled=self.mixed_precision):
                     inputs = self.preprocess_batch(inputs)
-                    pred, loss = self.forward(inputs)
+                    pred = self.forward(inputs)
+                    loss = self.compute_loss(inputs, pred)
 
                 # Backpropagation
                 self.backward(loss)
@@ -196,8 +196,8 @@ class TrainingLoop():
                 if verbose:
                     print(f'Processing batch: {batch + 1}/{num_batches}')
                 inputs = self.preprocess_batch(inputs)
-                pred, loss = self.forward(inputs)
-                loss = loss.detach()
+                pred = self.forward(inputs)
+                loss = self.compute_loss(inputs, pred).detach()
                 test_loss = test_loss + (loss - test_loss) / (batch + 1)
 
                 for name, fn in metrics.items():
@@ -217,17 +217,14 @@ class TrainingLoop():
         self.model.eval()
         h = []
         with torch.no_grad():
-            for X in data:
-                X = X.float().to(self.device, non_blocking=True)
-
-                pred = self.model(X).squeeze()
+            for inputs in data:
+                inputs = self.preprocess_batch(inputs)
+                pred = self.forward(inputs)
                 h = np.concatenate((h, pred.cpu().detach().numpy()), axis=None)
 
         return h
     
     def run(self, epochs=10, verbose=1):
-        # self.model = model.to(self.device)
-        # self.optimizer = self.optimizer_fn(self.model)
         self.update_state('verbose', verbose)
         try:
             self._train(epochs)

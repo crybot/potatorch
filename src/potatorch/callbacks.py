@@ -118,8 +118,8 @@ class ProgressbarCallback(TrainingCallback):
 class LRSchedulerCallback(TrainingCallback):
     def __init__(self, optimizer, warmup_steps=1000, cosine_annealing=True, restart=False, cosine_tmax=None, cosine_factor=None, min_lr=0.0, config={}):
         super().__init__()
+        # self.config = config
         self.optimizer = optimizer
-        # self.warmup_steps = warmup_steps
         self.warmup_steps=config.get('warmup_steps', warmup_steps)
         self.lr_warmup = LinearLR(self.optimizer, start_factor=0.001, total_iters=self.warmup_steps)
         self.lr_decay = ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=5)
@@ -136,6 +136,11 @@ class LRSchedulerCallback(TrainingCallback):
             if not self.cosine_factor:
                 self.cosine_factor = 1
             self.cosine_factor = int(self.cosine_factor)
+
+    def reset(self):
+        self.lr_warmup = LinearLR(self.optimizer, start_factor=0.001, total_iters=self.warmup_steps)
+        self.lr_decay = ReduceLROnPlateau(self.optimizer, mode='min', factor=0.5, patience=5)
+        self.lr_cosine = None # it will be initialized next epoch
 
     def _init_cosine_annealing(self):
         # With restarts

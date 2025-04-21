@@ -108,17 +108,18 @@ class TrainingLoop():
                 collate_fn=self._collate_fn,
                 pin_memory=self.pin_memory,
                 num_workers=self.num_workers,
-                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else None),
+                # prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else None),
+                prefetch_factor=2,
                 # TODO: how to pass worker_init_fn
                 # worker_init_fn=dataset.worker_init_fn,
-                persistent_workers=False)
+                persistent_workers=True)
         val_dl = dataloader_fn(val_ds,
                 batch_size=self.batch_size*2 if self.batch_size else None,
                 collate_fn=self._collate_fn,
                 shuffle=False,
                 pin_memory=self.pin_memory,
                 num_workers=self.num_workers,
-                prefetch_factor=(self.num_workers*2 if self.num_workers > 0 else None),
+                prefetch_factor=2,
                 persistent_workers=False)
         test_dl = dataloader_fn(test_ds,
                 batch_size=self.batch_size,

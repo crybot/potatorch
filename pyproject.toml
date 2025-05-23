@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "potatorch"
-version = "0.0.3"
+version = "0.0.5"
 authors = [
   { name="Marco Pampaloni", email="marco.pampaloni1@gmail.com" },
 ]

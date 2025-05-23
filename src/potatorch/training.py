@@ -29,6 +29,7 @@ class TrainingLoop():
             batch_size:int | None = 1024,
             shuffle=False,
             random_subsampling=None,
+            augmenter=None,
             filter_fn=None,
             num_workers=4,
             mixed_precision=False,
@@ -51,6 +52,7 @@ class TrainingLoop():
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.random_subsampling = random_subsampling
+        self.augmenter = augmenter
         self.filter_fn = filter_fn
         self.num_workers = num_workers
         self.device = device
@@ -98,6 +100,9 @@ class TrainingLoop():
         sampler = None
         if self.random_subsampling is not None:
             sampler = RandomSubsetSampler(train_ds, self.random_subsampling, replace=False)
+
+        if self.augmenter is not None:
+            train_ds = self.augmenter(train_ds)
         
         dataloader_fn = DataLoader if self.batch_size else UnbatchedDataloader
 
@@ -126,7 +131,7 @@ class TrainingLoop():
                 collate_fn=self._collate_fn,
                 shuffle=False,
                 pin_memory=self.pin_memory,
-                num_workers=0)
+                num_workers=4)
 
         return train_dl, val_dl, test_dl
 
@@ -209,7 +214,6 @@ class TrainingLoop():
         test_metrics = {k: v for k, v in test_metrics.items()}
         return test_loss, test_metrics
 
-    # TODO: refactor in terms of self.forward()
     def predict(self, data):
         """ Run inference over a set of datapoints,
             returning the predicted values.
@@ -363,5 +367,5 @@ class TrainingLoop():
         with torch.autocast(device_type=self.device, enabled=self.mixed_precision):
             loss, other_metrics = self._test(self.test_dataloader if use_test else self.val_dataloader, metrics, verbose=verbose)
 
-        self.on_evaluation_end(loss, other_metrics)
+        # self.on_evaluation_end(loss, other_metrics)
         return {'loss': loss, **other_metrics}

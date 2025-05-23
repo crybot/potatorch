@@ -53,6 +53,9 @@ class TrainingCallback(ABC):
     def on_validation_end(self, state):
         return
 
+    def on_evaluation_end(self, state):
+        return
+
 class ProgressbarCallback(TrainingCallback):
     kbar: pkbar.Kbar
 
@@ -389,7 +392,24 @@ class SanityCheckCallback(TrainingCallback):
             samples = zip(self.descriptors, self.data, h)
         else:
             samples = zip(range(len(self.data)), self.data, h)
-        for (i, x, y) in samples:
+
+        # fixed column widths # TODO: constructor arguments
+        W1, W2, W3 = 70, 20, 20
+
+        # header
+        header = f"{'Descriptor':<{W1}} {'Prediction':>{W2}} {'Target':>{W3}}"
+        print(header)
+        print("-" * len(header))
+        for (i, x, h) in samples:
+            y = x[-1] # The last value in the input tensor correspond to the supervised target
             if self.target_transform:
-                y = self.target_transform(y)
-            print(f'{i}: {y}')
+                h = self.target_transform(h)
+            if hasattr(y, "item"):
+                y = y.item()
+            if hasattr(h, "item"):
+                h = h.item()
+            print(
+                f"{str(i):<{W1}} "
+                    f"{str(h):>{W2}} "
+                    f"{str(y):>{W3}}"
+            )

@@ -225,7 +225,12 @@ class TrainingLoop():
             for inputs in data:
                 inputs = self.preprocess_batch(inputs)
                 pred = self.forward(inputs)
-                h = np.concatenate((h, pred.cpu().detach().numpy()), axis=None)
+
+                # ERROR TODO: fix this: maybe return an array of tuples containing the predicted values
+                if isinstance(pred, tuple):
+                    h = np.concatenate((h, pred[0].cpu().detach().numpy()), axis=None)
+                else:
+                    h = np.concatenate((h, pred.cpu().detach().numpy()), axis=None)
 
         return h
     

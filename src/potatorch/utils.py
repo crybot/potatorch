@@ -50,7 +50,7 @@ def load_model_from_wandb_checkpoint(
         ) -> nn.Module:
     checkpoint = download_wandb_checkpoint(run_path, checkpoint_path, device=device, exist_ok = True)
     config = download_wandb_config(run_path, config_path, strip_values=True, replace = True)
-    model = model_builder(config, device=device)
+    model = model_builder(config, device=device) #type: ignore
     model.load_state_dict(checkpoint['model_state_dict'])
 
     return model

@@ -1,9 +1,25 @@
+import random
 import wandb
 import torch
 import yaml
 import os
 from typing import Callable
 from torch import nn
+import numpy as np
+
+def set_random_state(seed):
+    torch.manual_seed(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.backends.cudnn.benchmark = False
+    # torch.use_deterministic_algorithms(True)
+
+def params_count(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+def print_summary(model):
+    print(model)
+    print(f'Number of parameters: {params_count(model)}')
 
 def to_device(*tensors, device, **kwargs):
     return tuple(tensor.to(device, **kwargs) for tensor in tensors)
